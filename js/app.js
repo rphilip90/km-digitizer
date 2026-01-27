@@ -129,6 +129,23 @@ const App = {
             Canvas.resetZoom();
         });
 
+        // Digitize mode toggle
+        document.querySelectorAll('input[name="digitizeMode"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                Canvas.digitizeMode = e.target.value;
+                const autoSettings = document.getElementById('autoSettings');
+                autoSettings.style.display = e.target.value === 'auto' ? 'block' : 'none';
+                Calibration.updateInstructions();
+            });
+        });
+
+        // Color tolerance slider
+        document.getElementById('colorTolerance').addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            document.getElementById('toleranceValue').textContent = value;
+            AutoDetect.colorTolerance = value;
+        });
+
         // Reset button
         document.getElementById('resetBtn').addEventListener('click', () => {
             if (confirm('Reset everything? This will clear all data.')) {

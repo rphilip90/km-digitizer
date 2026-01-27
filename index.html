@@ -122,6 +122,24 @@
 
                 <section class="panel">
                     <h3>Curves</h3>
+                    <div class="mode-toggle">
+                        <label class="mode-option">
+                            <input type="radio" name="digitizeMode" value="manual" checked>
+                            <span>Manual</span>
+                        </label>
+                        <label class="mode-option">
+                            <input type="radio" name="digitizeMode" value="auto">
+                            <span>Auto-detect</span>
+                        </label>
+                    </div>
+                    <div id="autoSettings" class="auto-settings" style="display: none;">
+                        <div class="input-group">
+                            <label>Color Tolerance</label>
+                            <input type="range" id="colorTolerance" min="10" max="80" value="30">
+                            <span id="toleranceValue">30</span>
+                        </div>
+                        <p class="help-text">Click on a curve to auto-trace it</p>
+                    </div>
                     <div id="curveList" class="curve-list"></div>
                     <button id="addCurveBtn" class="btn btn-primary btn-full">+ Add Curve</button>
                 </section>
@@ -206,6 +224,7 @@
 
     <script src="js/calibration.js"></script>
     <script src="js/curves.js"></script>
+    <script src="js/autodetect.js"></script>
     <script src="js/canvas.js"></script>
     <script src="js/export.js"></script>
     <script src="js/app.js"></script>

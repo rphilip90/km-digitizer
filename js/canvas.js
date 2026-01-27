@@ -16,6 +16,9 @@ const Canvas = {
     gridSpacingX: 10,  // Grid spacing in data units (e.g., 10 months)
     gridSpacingY: 0.1, // Grid spacing in data units (e.g., 0.1 survival)
 
+    // Digitization mode: 'manual' or 'auto'
+    digitizeMode: 'manual',
+
     // Dragging state
     isDragging: false,
     isPanning: false,
@@ -366,26 +369,87 @@ const Canvas = {
             return;
         }
 
-        // Check if clicking on existing point
-        const found = Curves.findPointAt(x, y, 10 / this.scale);
-        if (found) {
-            Curves.setActive(found.curve.id);
-            this.draw();
-            return;
+        // Check if clicking on existing point (in manual mode)
+        if (this.digitizeMode === 'manual') {
+            const found = Curves.findPointAt(x, y, 10 / this.scale);
+            if (found) {
+                Curves.setActive(found.curve.id);
+                this.draw();
+                return;
+            }
         }
 
-        // Add new point to active curve
+        // Add new point(s) to active curve
         const curve = Curves.getActive();
         if (!curve) {
             alert('Please add a curve first');
             return;
         }
 
-        const dataCoords = Calibration.pixelToData(x, y);
-        if (dataCoords) {
-            Curves.addPoint(x, y, dataCoords.x, dataCoords.y);
+        if (this.digitizeMode === 'auto') {
+            // Auto-detect curve
+            this.autoDetectCurve(x, y);
+        } else {
+            // Manual mode - add single point
+            const dataCoords = Calibration.pixelToData(x, y);
+            if (dataCoords) {
+                Curves.addPoint(x, y, dataCoords.x, dataCoords.y);
+                App.saveState();
+                this.draw();
+            }
+        }
+    },
+
+    // Auto-detect and trace curve from clicked point
+    autoDetectCurve(clickX, clickY) {
+        if (!this.image) return;
+
+        // Create temporary canvas to get image data
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = this.image.width;
+        tempCanvas.height = this.image.height;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(this.image, 0, 0);
+
+        const imageData = tempCtx.getImageData(0, 0, this.image.width, this.image.height);
+
+        // Detect curve points
+        const detectedPoints = AutoDetect.detectCurve(
+            clickX, clickY,
+            imageData,
+            this.image.width,
+            this.image.height
+        );
+
+        if (detectedPoints.length === 0) {
+            alert('Could not detect curve. Try adjusting color tolerance or click directly on the curve line.');
+            return;
+        }
+
+        // Simplify to reasonable number of points
+        const simplified = AutoDetect.simplifyPoints(detectedPoints, 40);
+
+        // Add all detected points to the active curve
+        let addedCount = 0;
+        simplified.forEach(point => {
+            const dataCoords = Calibration.pixelToData(point.x, point.y);
+            if (dataCoords) {
+                // Only add points within calibrated range
+                if (dataCoords.x >= Calibration.values.xMin &&
+                    dataCoords.x <= Calibration.values.xMax &&
+                    dataCoords.y >= Calibration.values.yMin &&
+                    dataCoords.y <= Calibration.values.yMax) {
+                    Curves.addPoint(point.x, point.y, dataCoords.x, dataCoords.y);
+                    addedCount++;
+                }
+            }
+        });
+
+        if (addedCount > 0) {
             App.saveState();
             this.draw();
+        } else {
+            alert('No valid points detected within the calibrated area.');
         }
     },
 

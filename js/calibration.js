@@ -149,8 +149,14 @@ const Calibration = {
             instructions.style.display = 'block';
         } else if (this.isComplete) {
             const curve = typeof Curves !== 'undefined' ? Curves.getActive() : null;
+            const mode = typeof Canvas !== 'undefined' ? Canvas.digitizeMode : 'manual';
+
             if (curve) {
-                instructions.innerHTML = `Adding points to: <strong style="color: ${curve.color}">${curve.name}</strong> | Shift+drag to pan | Scroll to zoom`;
+                if (mode === 'auto') {
+                    instructions.innerHTML = `<strong>AUTO MODE:</strong> Click on the <strong style="color: ${curve.color}">${curve.name}</strong> curve line to trace it`;
+                } else {
+                    instructions.innerHTML = `<strong>MANUAL:</strong> Click to add points to <strong style="color: ${curve.color}">${curve.name}</strong> | Shift+drag to pan`;
+                }
             } else {
                 instructions.textContent = 'Add a curve first, then click to add points';
             }
