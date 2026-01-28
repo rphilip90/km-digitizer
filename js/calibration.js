@@ -143,7 +143,6 @@ const Calibration = {
     // Update instructions text
     updateInstructions() {
         const instructions = document.getElementById('canvasInstructions');
-        const isZoomed = typeof Canvas !== 'undefined' && Canvas.zoomLevel > 1;
 
         if (this.isCalibrating) {
             instructions.textContent = this.steps[this.calibrationStep].label;
@@ -154,10 +153,9 @@ const Calibration = {
 
             if (curve) {
                 if (mode === 'auto') {
-                    instructions.innerHTML = `<strong>AUTO MODE:</strong> Click on the <strong style="color: ${curve.color}">${curve.name}</strong> curve line to trace it`;
+                    instructions.innerHTML = `<strong>AUTO:</strong> Click on <strong style="color: ${curve.color}">${curve.name}</strong> to trace | Drag to pan | Pinch to zoom`;
                 } else {
-                    const panHint = isZoomed ? ' | Drag to pan' : ' | Scroll to zoom';
-                    instructions.innerHTML = `<strong>MANUAL:</strong> Click to add points to <strong style="color: ${curve.color}">${curve.name}</strong>${panHint}`;
+                    instructions.innerHTML = `<strong>MANUAL:</strong> Click to add points | Drag to pan | Pinch/scroll to zoom`;
                 }
             } else {
                 instructions.textContent = 'Add a curve first, then click to add points';

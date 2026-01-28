@@ -44,13 +44,26 @@ const Canvas = {
         this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
         this.canvas.addEventListener('mouseleave', this.handleMouseUp.bind(this));
 
-        // Mouse wheel zoom
+        // Mouse wheel zoom (and trackpad pinch which sends wheel events with ctrlKey)
         this.canvas.addEventListener('wheel', this.handleWheel.bind(this), { passive: false });
+
+        // Touch events for mobile pinch-to-zoom
+        this.canvas.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
+        this.canvas.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
+        this.canvas.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: false });
 
         // Handle window resize
         window.addEventListener('resize', () => {
             if (this.image) this.fitImage();
         });
+    },
+
+    // Touch state for pinch-to-zoom
+    touchState: {
+        lastTouchDistance: 0,
+        lastTouchCenter: { x: 0, y: 0 },
+        isTouching: false,
+        touchCount: 0
     },
 
     // Load image onto canvas
@@ -164,29 +177,37 @@ const Canvas = {
 
     // Update cursor based on state
     updateCursor() {
-        if (this.zoomLevel > 1) {
-            this.canvas.style.cursor = 'grab';
-        } else {
-            this.canvas.style.cursor = 'crosshair';
-        }
+        // Always show grab cursor since pan is always available
+        this.canvas.style.cursor = 'grab';
     },
 
     // Clamp pan to keep image visible
     clampPan() {
-        if (!this.image || this.zoomLevel <= 1) {
-            this.panX = 0;
-            this.panY = 0;
-            return;
-        }
+        if (!this.image) return;
 
         const containerWidth = this.canvas.width;
         const containerHeight = this.canvas.height;
         const imageWidth = this.image.width * this.scale;
         const imageHeight = this.image.height * this.scale;
 
-        // Calculate max pan (allow image edge to reach container edge, but no further)
-        const maxPanX = Math.max(0, (imageWidth - containerWidth) / 2);
-        const maxPanY = Math.max(0, (imageHeight - containerHeight) / 2);
+        // Calculate max pan based on image vs container size
+        let maxPanX, maxPanY;
+
+        if (imageWidth > containerWidth) {
+            // Image wider than container - can pan horizontally
+            maxPanX = (imageWidth - containerWidth) / 2;
+        } else {
+            // Image smaller than container - allow some movement but keep centered-ish
+            maxPanX = (containerWidth - imageWidth) / 4;
+        }
+
+        if (imageHeight > containerHeight) {
+            // Image taller than container - can pan vertically
+            maxPanY = (imageHeight - containerHeight) / 2;
+        } else {
+            // Image smaller - allow some movement
+            maxPanY = (containerHeight - imageHeight) / 4;
+        }
 
         this.panX = Math.max(-maxPanX, Math.min(maxPanX, this.panX));
         this.panY = Math.max(-maxPanY, Math.min(maxPanY, this.panY));
@@ -199,7 +220,7 @@ const Canvas = {
         }
     },
 
-    // Handle mouse wheel for zoom
+    // Handle mouse wheel for zoom (also handles trackpad pinch)
     handleWheel(e) {
         if (!this.image) return;
         e.preventDefault();
@@ -208,8 +229,113 @@ const Canvas = {
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
 
-        const delta = e.deltaY > 0 ? 0.9 : 1.1;
-        this.setZoom(this.zoomLevel * delta, mouseX, mouseY);
+        // Trackpad pinch sends ctrlKey with wheel event
+        if (e.ctrlKey) {
+            // Pinch gesture - more sensitive zoom
+            const delta = e.deltaY > 0 ? 0.95 : 1.05;
+            this.setZoom(this.zoomLevel * delta, mouseX, mouseY);
+        } else {
+            // Regular scroll wheel
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            this.setZoom(this.zoomLevel * delta, mouseX, mouseY);
+        }
+    },
+
+    // Touch event handlers for mobile pinch-to-zoom
+    handleTouchStart(e) {
+        if (!this.image) return;
+
+        this.touchState.touchCount = e.touches.length;
+
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            // Two finger touch - prepare for pinch
+            this.touchState.lastTouchDistance = this.getTouchDistance(e.touches);
+            this.touchState.lastTouchCenter = this.getTouchCenter(e.touches);
+            this.touchState.isTouching = true;
+        } else if (e.touches.length === 1) {
+            // Single touch - prepare for pan
+            this.touchState.isTouching = true;
+            this.lastPanX = e.touches[0].clientX;
+            this.lastPanY = e.touches[0].clientY;
+            this.mouseDownX = e.touches[0].clientX;
+            this.mouseDownY = e.touches[0].clientY;
+            this.hasMoved = false;
+        }
+    },
+
+    handleTouchMove(e) {
+        if (!this.image || !this.touchState.isTouching) return;
+
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            // Pinch to zoom
+            const newDistance = this.getTouchDistance(e.touches);
+            const newCenter = this.getTouchCenter(e.touches);
+
+            if (this.touchState.lastTouchDistance > 0) {
+                const scale = newDistance / this.touchState.lastTouchDistance;
+                const rect = this.canvas.getBoundingClientRect();
+                const centerX = newCenter.x - rect.left;
+                const centerY = newCenter.y - rect.top;
+
+                this.setZoom(this.zoomLevel * scale, centerX, centerY);
+            }
+
+            this.touchState.lastTouchDistance = newDistance;
+            this.touchState.lastTouchCenter = newCenter;
+        } else if (e.touches.length === 1 && this.touchState.touchCount === 1) {
+            // Single finger pan
+            const touch = e.touches[0];
+            const dx = touch.clientX - this.lastPanX;
+            const dy = touch.clientY - this.lastPanY;
+
+            // Check if moved enough to count as pan
+            if (Math.abs(touch.clientX - this.mouseDownX) > 5 ||
+                Math.abs(touch.clientY - this.mouseDownY) > 5) {
+                this.hasMoved = true;
+            }
+
+            if (this.hasMoved) {
+                this.panX += dx;
+                this.panY += dy;
+                this.clampPan();
+
+                this.offsetX = (this.canvas.width - this.image.width * this.scale) / 2 + this.panX;
+                this.offsetY = (this.canvas.height - this.image.height * this.scale) / 2 + this.panY;
+
+                this.draw();
+            }
+
+            this.lastPanX = touch.clientX;
+            this.lastPanY = touch.clientY;
+        }
+    },
+
+    handleTouchEnd(e) {
+        if (e.touches.length === 0) {
+            this.touchState.isTouching = false;
+            this.touchState.lastTouchDistance = 0;
+            this.touchState.touchCount = 0;
+        } else if (e.touches.length === 1) {
+            // Went from 2 fingers to 1
+            this.touchState.touchCount = 1;
+            this.lastPanX = e.touches[0].clientX;
+            this.lastPanY = e.touches[0].clientY;
+        }
+    },
+
+    getTouchDistance(touches) {
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    },
+
+    getTouchCenter(touches) {
+        return {
+            x: (touches[0].clientX + touches[1].clientX) / 2,
+            y: (touches[0].clientY + touches[1].clientY) / 2
+        };
     },
 
     // Draw everything
@@ -630,8 +756,8 @@ const Canvas = {
             this.dragCurve = found.curve;
             Curves.setActive(found.curve.id);
             this.canvas.style.cursor = 'grabbing';
-        } else if (this.zoomLevel > 1) {
-            // When zoomed in, prepare for potential pan
+        } else {
+            // Prepare for potential pan (at any zoom level)
             this.isPanning = true;
             this.lastPanX = e.clientX;
             this.lastPanY = e.clientY;
@@ -646,9 +772,9 @@ const Canvas = {
         // Update coordinate display
         this.updateCoordsDisplay(x, y);
 
-        // Update cursor based on zoom level
+        // Update cursor
         if (!this.isPanning && !this.isDragging) {
-            this.canvas.style.cursor = this.zoomLevel > 1 ? 'grab' : 'crosshair';
+            this.canvas.style.cursor = 'grab';
         }
 
         // Check if mouse has moved significantly (for distinguishing click vs drag)
@@ -721,7 +847,7 @@ const Canvas = {
         }
 
         // Update cursor
-        this.canvas.style.cursor = this.zoomLevel > 1 ? 'grab' : 'crosshair';
+        this.canvas.style.cursor = 'grab';
 
         this.hasMoved = false;
 
