@@ -110,22 +110,72 @@ const Canvas = {
         this.fitImage();
     },
 
-    setZoom(level) {
+    setZoom(level, centerX = null, centerY = null) {
+        if (!this.image) return;
+
+        const oldZoom = this.zoomLevel;
+        const oldScale = this.scale;
+
         // Clamp zoom between 0.5x and 5x
         this.zoomLevel = Math.max(0.5, Math.min(5, level));
         this.scale = this.baseScale * this.zoomLevel;
 
-        // Recalculate offsets
-        const container = this.canvas.parentElement;
-        const rect = container.getBoundingClientRect();
-        const containerWidth = Math.floor(rect.width);
-        const containerHeight = Math.floor(rect.height) || 500;
+        // Reset pan if zooming back to fit or below
+        if (this.zoomLevel <= 1) {
+            this.panX = 0;
+            this.panY = 0;
+        } else if (centerX !== null && centerY !== null) {
+            // Zoom centered on mouse position
+            const zoomRatio = this.scale / oldScale;
 
-        this.offsetX = (containerWidth - this.image.width * this.scale) / 2 + this.panX;
-        this.offsetY = (containerHeight - this.image.height * this.scale) / 2 + this.panY;
+            // Adjust pan to keep the point under cursor stationary
+            const containerWidth = this.canvas.width;
+            const containerHeight = this.canvas.height;
+
+            const oldCenterX = (containerWidth - this.image.width * oldScale) / 2 + this.panX;
+            const oldCenterY = (containerHeight - this.image.height * oldScale) / 2 + this.panY;
+
+            // Calculate new pan to maintain mouse position
+            const mouseImageX = (centerX - oldCenterX) / oldScale;
+            const mouseImageY = (centerY - oldCenterY) / oldScale;
+
+            const newCenterX = (containerWidth - this.image.width * this.scale) / 2;
+            const newCenterY = (containerHeight - this.image.height * this.scale) / 2;
+
+            this.panX = centerX - newCenterX - mouseImageX * this.scale;
+            this.panY = centerY - newCenterY - mouseImageY * this.scale;
+        }
+
+        // Apply pan limits
+        this.clampPan();
+
+        // Recalculate offsets
+        this.offsetX = (this.canvas.width - this.image.width * this.scale) / 2 + this.panX;
+        this.offsetY = (this.canvas.height - this.image.height * this.scale) / 2 + this.panY;
 
         this.draw();
         this.updateZoomDisplay();
+    },
+
+    // Clamp pan to keep image visible
+    clampPan() {
+        if (!this.image || this.zoomLevel <= 1) {
+            this.panX = 0;
+            this.panY = 0;
+            return;
+        }
+
+        const containerWidth = this.canvas.width;
+        const containerHeight = this.canvas.height;
+        const imageWidth = this.image.width * this.scale;
+        const imageHeight = this.image.height * this.scale;
+
+        // Calculate max pan (allow image edge to reach container edge, but no further)
+        const maxPanX = Math.max(0, (imageWidth - containerWidth) / 2);
+        const maxPanY = Math.max(0, (imageHeight - containerHeight) / 2);
+
+        this.panX = Math.max(-maxPanX, Math.min(maxPanX, this.panX));
+        this.panY = Math.max(-maxPanY, Math.min(maxPanY, this.panY));
     },
 
     updateZoomDisplay() {
@@ -140,19 +190,33 @@ const Canvas = {
         if (!this.image) return;
         e.preventDefault();
 
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
         const delta = e.deltaY > 0 ? 0.9 : 1.1;
-        this.setZoom(this.zoomLevel * delta);
+        this.setZoom(this.zoomLevel * delta, mouseX, mouseY);
     },
 
     // Draw everything
     draw() {
         if (!this.ctx) return;
 
-        // Clear canvas
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        // Clear canvas with background
+        this.ctx.fillStyle = '#e0e0e0';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         // Draw image
         if (this.image) {
+            // Draw white background for image area
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.fillRect(
+                this.offsetX,
+                this.offsetY,
+                this.image.width * this.scale,
+                this.image.height * this.scale
+            );
+
             this.ctx.drawImage(
                 this.image,
                 this.offsetX,
@@ -540,18 +604,19 @@ const Canvas = {
         const { x, y } = this.screenToImage(e.clientX, e.clientY);
         const found = Curves.findPointAt(x, y, 10 / this.scale);
 
-        if (found && Calibration.isComplete) {
+        if (found && Calibration.isComplete && this.digitizeMode === 'manual') {
             this.isDragging = true;
             this.dragPoint = found.point;
             this.dragCurve = found.curve;
             Curves.setActive(found.curve.id);
             this.canvas.style.cursor = 'grabbing';
-        } else if (e.shiftKey && this.zoomLevel > 1) {
-            // Shift+drag to pan when zoomed
+        } else if (this.zoomLevel > 1 && (e.shiftKey || e.ctrlKey || e.button === 1)) {
+            // Shift+drag or Ctrl+drag or middle-click to pan when zoomed
             this.isPanning = true;
             this.lastPanX = e.clientX;
             this.lastPanY = e.clientY;
             this.canvas.style.cursor = 'move';
+            e.preventDefault();
         }
     },
 
@@ -570,6 +635,9 @@ const Canvas = {
             this.panY += dy;
             this.lastPanX = e.clientX;
             this.lastPanY = e.clientY;
+
+            // Apply pan limits
+            this.clampPan();
 
             this.offsetX = (this.canvas.width - this.image.width * this.scale) / 2 + this.panX;
             this.offsetY = (this.canvas.height - this.image.height * this.scale) / 2 + this.panY;
