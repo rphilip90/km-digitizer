@@ -484,6 +484,14 @@ header h1 {
     font-size: 0.85rem;
 }
 
+/* Panel hint */
+.panel-hint {
+    font-size: 0.75rem;
+    color: var(--text-light);
+    margin-bottom: 0.75rem;
+    font-style: italic;
+}
+
 /* Metadata fields */
 .metadata-fields .input-group {
     margin-bottom: 0.5rem;
@@ -492,6 +500,18 @@ header h1 {
 .metadata-fields input {
     font-size: 0.85rem;
     padding: 0.4rem 0.5rem;
+}
+
+/* Modal grid for curve form */
+.modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.modal-grid .input-group {
+    margin-bottom: 0;
 }
 
 /* Curve List */

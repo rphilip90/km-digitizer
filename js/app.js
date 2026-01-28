@@ -325,7 +325,22 @@ const App = {
             return;
         }
 
-        Curves.create(name, color);
+        // Collect curve-level metadata
+        const metadata = {
+            treatment: document.getElementById('curveTreatment').value.trim(),
+            population: document.getElementById('curvePopulation').value.trim(),
+            line: document.getElementById('curveLine').value.trim(),
+            n: document.getElementById('curveN').value.trim(),
+        };
+
+        Curves.create(name, color, metadata);
+
+        // Clear the metadata fields for next curve
+        document.getElementById('curveTreatment').value = '';
+        document.getElementById('curvePopulation').value = '';
+        document.getElementById('curveLine').value = '';
+        document.getElementById('curveN').value = '';
+
         document.getElementById('curveModal').style.display = 'none';
         Canvas.draw();
     },

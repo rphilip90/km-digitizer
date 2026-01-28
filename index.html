@@ -145,22 +145,23 @@
 
                 <section class="panel">
                     <h3>Study Info</h3>
+                    <p class="panel-hint">Applies to all curves</p>
                     <div class="metadata-fields">
                         <div class="input-group">
                             <label for="studySource">Source/Author</label>
                             <input type="text" id="studySource" placeholder="e.g., Smith et al. 2024">
                         </div>
                         <div class="input-group">
+                            <label for="studyName">Study/Trial</label>
+                            <input type="text" id="studyName" placeholder="e.g., KEYNOTE-522">
+                        </div>
+                        <div class="input-group">
                             <label for="studyEndpoint">Endpoint</label>
-                            <input type="text" id="studyEndpoint" placeholder="e.g., Overall Survival">
+                            <input type="text" id="studyEndpoint" placeholder="e.g., OS, PFS">
                         </div>
                         <div class="input-group">
-                            <label for="studyPopulation">Population</label>
-                            <input type="text" id="studyPopulation" placeholder="e.g., ITT, HR+ BC">
-                        </div>
-                        <div class="input-group">
-                            <label for="studyNotes">Notes</label>
-                            <input type="text" id="studyNotes" placeholder="Additional notes">
+                            <label for="studyFigure">Figure Ref</label>
+                            <input type="text" id="studyFigure" placeholder="e.g., Figure 2A">
                         </div>
                     </div>
                 </section>
@@ -225,16 +226,34 @@
 
     <!-- Add Curve Modal -->
     <div id="curveModal" class="modal" style="display: none;">
-        <div class="modal-content modal-small">
+        <div class="modal-content">
             <span class="modal-close">&times;</span>
             <h2>Add New Curve</h2>
-            <div class="input-group">
-                <label for="curveName">Curve Name</label>
-                <input type="text" id="curveName" placeholder="e.g., Treatment A">
-            </div>
-            <div class="input-group">
-                <label for="curveColor">Color</label>
-                <input type="color" id="curveColor" value="#2196F3">
+            <div class="modal-grid">
+                <div class="input-group">
+                    <label for="curveName">Curve Name</label>
+                    <input type="text" id="curveName" placeholder="e.g., Arm 1">
+                </div>
+                <div class="input-group">
+                    <label for="curveColor">Color</label>
+                    <input type="color" id="curveColor" value="#2196F3">
+                </div>
+                <div class="input-group">
+                    <label for="curveTreatment">Treatment/Intervention</label>
+                    <input type="text" id="curveTreatment" placeholder="e.g., Pembrolizumab + Chemo">
+                </div>
+                <div class="input-group">
+                    <label for="curvePopulation">Population/Subgroup</label>
+                    <input type="text" id="curvePopulation" placeholder="e.g., ITT, PD-L1+">
+                </div>
+                <div class="input-group">
+                    <label for="curveLine">Line of Therapy</label>
+                    <input type="text" id="curveLine" placeholder="e.g., 1L, 2L+">
+                </div>
+                <div class="input-group">
+                    <label for="curveN">N (sample size)</label>
+                    <input type="number" id="curveN" placeholder="e.g., 400">
+                </div>
             </div>
             <button id="saveCurveBtn" class="btn btn-primary btn-full">Add Curve</button>
         </div>

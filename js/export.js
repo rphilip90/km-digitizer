@@ -1,15 +1,50 @@
 // Export module - handles data export
 const Export = {
-    // Generate CSV content
+    // Get study-level metadata from form
+    getStudyMetadata() {
+        return {
+            source: document.getElementById('studySource')?.value || '',
+            study: document.getElementById('studyName')?.value || '',
+            endpoint: document.getElementById('studyEndpoint')?.value || '',
+            figure: document.getElementById('studyFigure')?.value || '',
+        };
+    },
+
+    // Escape CSV field (handle commas and quotes)
+    escapeCSV(value) {
+        if (value === null || value === undefined) return '';
+        const str = String(value);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+            return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+    },
+
+    // Generate CSV content with full metadata
     generateCSV() {
         const curves = Curves.getAll();
         if (curves.length === 0) return '';
 
-        const rows = ['Time,Value,Curve'];
+        const studyMeta = this.getStudyMetadata();
+        const headers = ['Source', 'Study', 'Endpoint', 'Figure', 'Curve', 'Treatment', 'Population', 'Line', 'N', 'Time', 'Value'];
+        const rows = [headers.join(',')];
 
         curves.forEach(curve => {
             curve.points.forEach(point => {
-                rows.push(`${point.x},${point.y},"${curve.name}"`);
+                const row = [
+                    this.escapeCSV(studyMeta.source),
+                    this.escapeCSV(studyMeta.study),
+                    this.escapeCSV(studyMeta.endpoint),
+                    this.escapeCSV(studyMeta.figure),
+                    this.escapeCSV(curve.name),
+                    this.escapeCSV(curve.treatment),
+                    this.escapeCSV(curve.population),
+                    this.escapeCSV(curve.line),
+                    this.escapeCSV(curve.n),
+                    point.x.toFixed(4),
+                    point.y.toFixed(4),
+                ];
+                rows.push(row.join(','));
             });
         });
 
@@ -27,9 +62,16 @@ const Export = {
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
 
+        // Generate filename from study metadata
+        const studyMeta = this.getStudyMetadata();
+        const studyName = studyMeta.study || studyMeta.source || 'digitized';
+        const safeName = studyName.replace(/[^a-z0-9]/gi, '_').substring(0, 30);
+        const date = new Date().toISOString().split('T')[0];
+        const filename = `${safeName}_curves_${date}.csv`;
+
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'digitized_curve_data.csv';
+        link.download = filename;
         link.click();
 
         URL.revokeObjectURL(url);

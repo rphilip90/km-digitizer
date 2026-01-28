@@ -17,12 +17,16 @@ const Curves = {
     ],
 
     // Create a new curve
-    create(name, color) {
+    create(name, color, metadata = {}) {
         const id = this.nextId++;
         const curve = {
             id,
             name: name || `Curve ${id}`,
             color: color || this.defaultColors[(id - 1) % this.defaultColors.length],
+            treatment: metadata.treatment || '',
+            population: metadata.population || '',
+            line: metadata.line || '',
+            n: metadata.n || '',
             points: [],
         };
         this.curves.push(curve);

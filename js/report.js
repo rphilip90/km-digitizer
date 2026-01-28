@@ -4,9 +4,9 @@ const Report = {
     getMetadata() {
         return {
             source: document.getElementById('studySource')?.value || '',
+            study: document.getElementById('studyName')?.value || '',
             endpoint: document.getElementById('studyEndpoint')?.value || '',
-            population: document.getElementById('studyPopulation')?.value || '',
-            notes: document.getElementById('studyNotes')?.value || '',
+            figure: document.getElementById('studyFigure')?.value || '',
             exportDate: new Date().toLocaleString(),
             calibration: {
                 xMin: Calibration.values.xMin,
@@ -23,6 +23,11 @@ const Report = {
         return canvas.toDataURL('image/png');
     },
 
+    // Generate CSV content for the report (uses Export module)
+    generateCSVForReport() {
+        return Export.generateCSV();
+    },
+
     // Generate data table HTML
     generateDataTable() {
         const curves = Curves.getAll();
@@ -32,6 +37,17 @@ const Report = {
 
         curves.forEach(curve => {
             html += `<h3 style="color: ${curve.color}; margin-top: 20px;">${curve.name}</h3>`;
+
+            // Show curve-level metadata if present
+            const metaItems = [];
+            if (curve.treatment) metaItems.push(`<strong>Treatment:</strong> ${curve.treatment}`);
+            if (curve.population) metaItems.push(`<strong>Population:</strong> ${curve.population}`);
+            if (curve.line) metaItems.push(`<strong>Line:</strong> ${curve.line}`);
+            if (curve.n) metaItems.push(`<strong>N:</strong> ${curve.n}`);
+            if (metaItems.length > 0) {
+                html += `<p style="font-size: 0.9rem; color: #666; margin-bottom: 10px;">${metaItems.join(' | ')}</p>`;
+            }
+
             html += `<table class="data-table">
                 <thead>
                     <tr>
@@ -186,9 +202,55 @@ const Report = {
             color: #888;
             text-align: center;
         }
+        .csv-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .csv-section h2 {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+        .csv-section textarea {
+            width: 100%;
+            height: 200px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+            background: #fff;
+        }
+        .download-btn, .copy-btn {
+            padding: 8px 16px;
+            margin-right: 8px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .download-btn {
+            background: #2196F3;
+            color: white;
+        }
+        .download-btn:hover {
+            background: #1976D2;
+        }
+        .copy-btn {
+            background: #e0e0e0;
+            color: #333;
+        }
+        .copy-btn:hover {
+            background: #d0d0d0;
+        }
         @media print {
             body { padding: 0; }
             .no-print { display: none; }
+            .csv-section { display: none; }
         }
     </style>
 </head>
@@ -205,16 +267,16 @@ const Report = {
                 <span>${metadata.source || 'Not specified'}</span>
             </div>
             <div class="metadata-item">
+                <label>Study / Trial</label>
+                <span>${metadata.study || 'Not specified'}</span>
+            </div>
+            <div class="metadata-item">
                 <label>Endpoint</label>
                 <span>${metadata.endpoint || 'Not specified'}</span>
             </div>
             <div class="metadata-item">
-                <label>Population</label>
-                <span>${metadata.population || 'Not specified'}</span>
-            </div>
-            <div class="metadata-item">
-                <label>Notes</label>
-                <span>${metadata.notes || 'None'}</span>
+                <label>Figure Reference</label>
+                <span>${metadata.figure || 'Not specified'}</span>
             </div>
         </div>
     </div>
@@ -242,14 +304,40 @@ const Report = {
         ${dataTable}
     </div>
 
+    <div class="csv-section">
+        <h2>CSV Export</h2>
+        <p style="margin-bottom: 10px;">Copy the data below or use the download button:</p>
+        <button onclick="downloadCSV()" class="download-btn">Download CSV</button>
+        <button onclick="copyCSV()" class="copy-btn">Copy to Clipboard</button>
+        <textarea id="csvData" readonly>${this.generateCSVForReport()}</textarea>
+    </div>
+
     <div class="footer">
         <p>Generated using KM/CIF Curve Digitizer</p>
         <p>https://rphilip90.github.io/km-digitizer/</p>
     </div>
 
     <script>
-        // Auto-print option
-        // window.onload = () => window.print();
+        function downloadCSV() {
+            const csvData = document.getElementById('csvData').value;
+            const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'curve_data.csv';
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function copyCSV() {
+            const textarea = document.getElementById('csvData');
+            textarea.select();
+            document.execCommand('copy');
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = 'Copied!';
+            setTimeout(() => { btn.textContent = originalText; }, 2000);
+        }
     </script>
 </body>
 </html>`;
