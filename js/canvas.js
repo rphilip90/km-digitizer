@@ -26,6 +26,10 @@ const Canvas = {
     lastPanY: 0,
     dragPoint: null,
     dragCurve: null,
+    mouseDownX: 0,
+    mouseDownY: 0,
+    hasMoved: false,  // Track if mouse moved since mousedown
+    wasPanning: false, // Track if user was panning (to prevent click after pan)
 
     // Initialize canvas
     init() {
@@ -155,6 +159,16 @@ const Canvas = {
 
         this.draw();
         this.updateZoomDisplay();
+        this.updateCursor();
+    },
+
+    // Update cursor based on state
+    updateCursor() {
+        if (this.zoomLevel > 1) {
+            this.canvas.style.cursor = 'grab';
+        } else {
+            this.canvas.style.cursor = 'crosshair';
+        }
     },
 
     // Clamp pan to keep image visible
@@ -417,7 +431,8 @@ const Canvas = {
 
     // Handle click
     handleClick(e) {
-        if (this.isDragging) return;
+        // Don't process click if we were dragging or panning
+        if (this.isDragging || this.wasPanning) return;
 
         const { x, y } = this.screenToImage(e.clientX, e.clientY);
 
@@ -601,22 +616,26 @@ const Canvas = {
     handleMouseDown(e) {
         if (e.button !== 0) return; // Left click only
 
+        this.mouseDownX = e.clientX;
+        this.mouseDownY = e.clientY;
+        this.hasMoved = false;
+
         const { x, y } = this.screenToImage(e.clientX, e.clientY);
         const found = Curves.findPointAt(x, y, 10 / this.scale);
 
         if (found && Calibration.isComplete && this.digitizeMode === 'manual') {
+            // Start dragging an existing point
             this.isDragging = true;
             this.dragPoint = found.point;
             this.dragCurve = found.curve;
             Curves.setActive(found.curve.id);
             this.canvas.style.cursor = 'grabbing';
-        } else if (this.zoomLevel > 1 && (e.shiftKey || e.ctrlKey || e.button === 1)) {
-            // Shift+drag or Ctrl+drag or middle-click to pan when zoomed
+        } else if (this.zoomLevel > 1) {
+            // When zoomed in, prepare for potential pan
             this.isPanning = true;
             this.lastPanX = e.clientX;
             this.lastPanY = e.clientY;
-            this.canvas.style.cursor = 'move';
-            e.preventDefault();
+            this.canvas.style.cursor = 'grabbing';
         }
     },
 
@@ -627,8 +646,20 @@ const Canvas = {
         // Update coordinate display
         this.updateCoordsDisplay(x, y);
 
+        // Update cursor based on zoom level
+        if (!this.isPanning && !this.isDragging) {
+            this.canvas.style.cursor = this.zoomLevel > 1 ? 'grab' : 'crosshair';
+        }
+
+        // Check if mouse has moved significantly (for distinguishing click vs drag)
+        const moveThreshold = 5;
+        if (Math.abs(e.clientX - this.mouseDownX) > moveThreshold ||
+            Math.abs(e.clientY - this.mouseDownY) > moveThreshold) {
+            this.hasMoved = true;
+        }
+
         // Handle panning
-        if (this.isPanning) {
+        if (this.isPanning && this.hasMoved) {
             const dx = e.clientX - this.lastPanX;
             const dy = e.clientY - this.lastPanY;
             this.panX += dx;
@@ -649,6 +680,7 @@ const Canvas = {
         // Handle point dragging
         if (!this.isDragging || !this.dragPoint) return;
 
+        this.hasMoved = true;
         const dataCoords = Calibration.pixelToData(x, y);
 
         if (dataCoords) {
@@ -673,18 +705,28 @@ const Canvas = {
     },
 
     // Handle mouse up (end drag)
-    handleMouseUp() {
+    handleMouseUp(e) {
+        // Track if we were panning to prevent click from adding point
+        this.wasPanning = this.isPanning && this.hasMoved;
+
         if (this.isDragging) {
             this.isDragging = false;
             this.dragPoint = null;
             this.dragCurve = null;
-            this.canvas.style.cursor = 'crosshair';
             App.saveState();
         }
+
         if (this.isPanning) {
             this.isPanning = false;
-            this.canvas.style.cursor = 'crosshair';
         }
+
+        // Update cursor
+        this.canvas.style.cursor = this.zoomLevel > 1 ? 'grab' : 'crosshair';
+
+        this.hasMoved = false;
+
+        // Reset wasPanning after a short delay (so click event can check it)
+        setTimeout(() => { this.wasPanning = false; }, 50);
     },
 
     // Clear canvas
