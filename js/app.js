@@ -98,6 +98,11 @@ const App = {
             Export.copyToClipboard();
         });
 
+        // Report button
+        document.getElementById('reportBtn').addEventListener('click', () => {
+            Report.downloadReport();
+        });
+
         // Undo/redo buttons (footer)
         document.getElementById('undoBtn').addEventListener('click', () => {
             this.undo();

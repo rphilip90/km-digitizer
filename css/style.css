@@ -484,6 +484,16 @@ header h1 {
     font-size: 0.85rem;
 }
 
+/* Metadata fields */
+.metadata-fields .input-group {
+    margin-bottom: 0.5rem;
+}
+
+.metadata-fields input {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.5rem;
+}
+
 /* Curve List */
 .curve-list {
     margin-bottom: 0.75rem;
