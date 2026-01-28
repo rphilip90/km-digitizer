@@ -146,6 +146,11 @@ const App = {
             AutoDetect.colorTolerance = value;
         });
 
+        // Detect all curves button
+        document.getElementById('detectAllBtn').addEventListener('click', () => {
+            Canvas.detectAllCurvesAuto();
+        });
+
         // Reset button
         document.getElementById('resetBtn').addEventListener('click', () => {
             if (confirm('Reset everything? This will clear all data.')) {

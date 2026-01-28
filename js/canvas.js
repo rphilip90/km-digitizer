@@ -453,6 +453,70 @@ const Canvas = {
         }
     },
 
+    // Automatically detect ALL curves in the image
+    detectAllCurvesAuto() {
+        if (!this.image) {
+            alert('Please load an image first.');
+            return;
+        }
+
+        if (!Calibration.isComplete) {
+            alert('Please calibrate the axes first.');
+            return;
+        }
+
+        // Create temporary canvas to get image data
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = this.image.width;
+        tempCanvas.height = this.image.height;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(this.image, 0, 0);
+
+        const imageData = tempCtx.getImageData(0, 0, this.image.width, this.image.height);
+
+        // Detect all curves
+        const detectedCurves = AutoDetect.detectAllCurves(
+            imageData,
+            this.image.width,
+            this.image.height,
+            Calibration
+        );
+
+        if (detectedCurves.length === 0) {
+            alert('No curves detected. Try adjusting the color tolerance or use manual mode.');
+            return;
+        }
+
+        // Clear existing curves and add detected ones
+        const addCurves = confirm(`Detected ${detectedCurves.length} curve(s). Add them? (This will create new curves)`);
+
+        if (!addCurves) return;
+
+        // Add each detected curve
+        detectedCurves.forEach((detected, index) => {
+            // Create new curve with detected color
+            const curve = Curves.create(`Curve ${index + 1}`, detected.hexColor);
+
+            // Add points to this curve
+            detected.points.forEach(point => {
+                const dataCoords = Calibration.pixelToData(point.x, point.y);
+                if (dataCoords) {
+                    if (dataCoords.x >= Calibration.values.xMin &&
+                        dataCoords.x <= Calibration.values.xMax &&
+                        dataCoords.y >= Calibration.values.yMin &&
+                        dataCoords.y <= Calibration.values.yMax) {
+                        Curves.addPoint(point.x, point.y, dataCoords.x, dataCoords.y);
+                    }
+                }
+            });
+        });
+
+        App.saveState();
+        this.draw();
+
+        alert(`Added ${detectedCurves.length} curve(s) with their data points.`);
+    },
+
     // Handle right click (delete point)
     handleRightClick(e) {
         e.preventDefault();

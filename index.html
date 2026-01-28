@@ -133,12 +133,15 @@
                         </label>
                     </div>
                     <div id="autoSettings" class="auto-settings" style="display: none;">
+                        <button id="detectAllBtn" class="btn btn-primary btn-full">
+                            Detect All Curves Automatically
+                        </button>
+                        <div class="divider">or click on a specific curve</div>
                         <div class="input-group">
                             <label>Color Tolerance</label>
                             <input type="range" id="colorTolerance" min="10" max="80" value="30">
                             <span id="toleranceValue">30</span>
                         </div>
-                        <p class="help-text">Click on a curve to auto-trace it</p>
                     </div>
                     <div id="curveList" class="curve-list"></div>
                     <button id="addCurveBtn" class="btn btn-primary btn-full">+ Add Curve</button>

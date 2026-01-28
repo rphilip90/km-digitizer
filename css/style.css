@@ -452,6 +452,32 @@ header h1 {
     margin: 0;
 }
 
+.auto-settings .divider {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-light);
+    margin: 0.75rem 0;
+    position: relative;
+}
+
+.auto-settings .divider::before,
+.auto-settings .divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 25%;
+    height: 1px;
+    background: var(--border);
+}
+
+.auto-settings .divider::before {
+    left: 0;
+}
+
+.auto-settings .divider::after {
+    right: 0;
+}
+
 #toleranceValue {
     min-width: 24px;
     text-align: right;
