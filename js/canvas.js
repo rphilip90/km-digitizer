@@ -177,8 +177,8 @@ const Canvas = {
 
     // Update cursor based on state
     updateCursor() {
-        // Always show grab cursor since pan is always available
-        this.canvas.style.cursor = 'grab';
+        // Default is crosshair for precise point placement
+        this.canvas.style.cursor = 'crosshair';
     },
 
     // Clamp pan to keep image visible
@@ -772,9 +772,9 @@ const Canvas = {
         // Update coordinate display
         this.updateCoordsDisplay(x, y);
 
-        // Update cursor
+        // Update cursor - crosshair when idle, grabbing when panning
         if (!this.isPanning && !this.isDragging) {
-            this.canvas.style.cursor = 'grab';
+            this.canvas.style.cursor = 'crosshair';
         }
 
         // Check if mouse has moved significantly (for distinguishing click vs drag)
@@ -846,8 +846,8 @@ const Canvas = {
             this.isPanning = false;
         }
 
-        // Update cursor
-        this.canvas.style.cursor = 'grab';
+        // Reset cursor to crosshair
+        this.canvas.style.cursor = 'crosshair';
 
         this.hasMoved = false;
 
