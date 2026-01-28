@@ -98,9 +98,9 @@ const App = {
             Export.copyToClipboard();
         });
 
-        // Excel export button
-        document.getElementById('excelBtn').addEventListener('click', () => {
-            Export.downloadExcel();
+        // Report button
+        document.getElementById('reportBtn').addEventListener('click', () => {
+            Report.downloadReport();
         });
 
         // Undo/redo buttons (footer)
